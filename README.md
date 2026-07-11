@@ -16,9 +16,9 @@
 |---|---|---|
 | **オーケストレーター**: 一枚絵の分析、画像生成プロンプトの設計、検品NG時のプロンプト修正 | **Claude Fable 5** (`claude-fable-5`) | 1〜数回（少数の重要な判断のみ） |
 | **ワーカー（検品/QC）**: 生成された各シートがグリッド仕様・表情・キャラ一貫性を満たすかチェック | **Claude Haiku 4.5** (`claude-haiku-4-5`) | シートごと（6回〜リトライ分） |
-| **画像生成**: スプライトシートの描画 | **Gemini** (`gemini-2.5-flash-image`) | シートごと（6回〜リトライ分） |
+| **画像生成**: スプライトシートの描画 | **ローカル Qwen-Image-Edit 2511**（推奨・無料）または **Gemini** (`gemini-2.5-flash-image`) | シートごと（6回〜リトライ分） |
 
-> Claude は画像の「理解」はできますが「生成」はできないため、描画のみ Gemini に委譲しています。指揮系統（分析・プロンプト設計・品質判断のループ）はすべて Claude 側です。
+> Claude は画像の「理解」はできますが「生成」はできないため、描画のみ画像生成バックエンドに委譲しています。指揮系統（分析・プロンプト設計・品質判断のループ）はすべて Claude 側です。
 >
 > Fable 5 の呼び出しには、安全分類器による誤検知に備えて **Opus 4.8 へのサーバー側フォールバック**をデフォルトで有効にしています（不要なら `src/claude.js` の `betas` / `fallbacks` を外してください）。
 
@@ -37,14 +37,40 @@
 
 ## セットアップ
 
-必要なもの: Node.js 20.19+、Anthropic API キー、Gemini API キー
+必要なもの: Node.js 20.19+、Anthropic API キー、＋画像生成バックエンド（下のどちらか）
 
 ```bash
 npm install
 cp .env.example .env
-# .env に ANTHROPIC_API_KEY と GEMINI_API_KEY を記入
+# .env に ANTHROPIC_API_KEY を記入し、画像生成バックエンドを設定（下記）
 npm start
 ```
+
+### 画像生成バックエンドの選択
+
+**A. ローカル Qwen-Image-Edit 2511（推奨・生成コストゼロ）**
+
+手元のGPUで Qwen-Image-Edit-2511 が動く環境なら、同梱の簡易サーバーを立てるだけです:
+
+```bash
+pip install -r tools/requirements.txt
+python tools/qwen_server.py --port 8000 --preload
+```
+
+`.env` に以下を追加:
+
+```
+IMAGE_BACKEND=qwen
+QWEN_SERVER_URL=http://localhost:8000
+```
+
+- モデルは初回に Hugging Face から `Qwen/Qwen-Image-Edit-2511` を取得します（`QWEN_MODEL` で変更可）。
+- VRAM が足りない場合は `QWEN_OFFLOAD=1` で CPU オフロードできます（遅くなります）。
+- すでに ComfyUI 等で運用している場合は、`POST /edit`（`{prompt, images:[base64...]}` → `{mimeType, data}`）と同じ形のエンドポイントを用意すればそのまま差し替えられます。
+
+**B. Gemini API**
+
+`.env` に `GEMINI_API_KEY` を記入するだけ（`QWEN_SERVER_URL` 未設定なら自動的に Gemini を使います）。
 
 ブラウザで <http://localhost:3000> を開き、一枚絵をドロップして「アバターを自動生成する」を押すだけです。生成には数分かかります。完成すると `output/<ジョブID>/` にシートとフレームが保存され、ビューアのリンクが表示されます。
 
@@ -53,14 +79,16 @@ npm start
 | 変数 | 既定値 | 説明 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | （必須） | Claude API キー |
-| `GEMINI_API_KEY` | （必須） | Gemini API キー |
-| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | 画像生成モデル |
+| `IMAGE_BACKEND` | 自動判定 | `qwen` / `gemini`。未指定時は `QWEN_SERVER_URL` があれば qwen |
+| `QWEN_SERVER_URL` | `http://localhost:8000` | ローカル Qwen サーバーの URL |
+| `GEMINI_API_KEY` | — | Gemini バックエンド使用時のみ必須 |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | Gemini の画像生成モデル |
 | `MAX_ATTEMPTS` | `2` | 1シートあたりの生成リトライ上限（増やすと品質↑コスト↑） |
 | `PORT` | `3000` | サーバーポート |
 
 ## コストの目安
 
-1回の生成で最低: Fable 5 ×1（分析）+ Gemini ×6（シート）+ Haiku ×6（検品）。検品NGが出るとリトライ分だけ Gemini/Haiku/Fable の呼び出しが増えます。コストを抑えたいときは `MAX_ATTEMPTS=1` にしてください。
+1回の生成で最低: Fable 5 ×1（分析）+ 画像生成 ×6（シート）+ Haiku ×6（検品）。検品NGが出るとリトライ分だけ呼び出しが増えます。ローカル Qwen バックエンドなら画像生成は無料なので、`MAX_ATTEMPTS` を 3〜4 に上げて品質を優先するのがおすすめです（増えるのは安価な Haiku の検品と、たまの Fable のプロンプト修正だけ）。Gemini 利用時でコストを抑えたいときは `MAX_ATTEMPTS=1` にしてください。
 
 ## 既知の制限
 

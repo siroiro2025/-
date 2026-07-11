@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { imageBlock, orchestratorJSON, workerJSON } = require("./claude");
-const { generateImage } = require("./gemini");
+const { generateImage, backendLabel } = require("./imagegen");
 const { sliceSheet } = require("./slicer");
 
 const GRID_ROWS = 5;
@@ -194,7 +194,7 @@ Style: ${plan.style_notes}`;
     let accepted = null;
     let lastQC = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      step.detail = `生成 ${attempt}/${maxAttempts} 回目（Gemini）...`;
+      step.detail = `生成 ${attempt}/${maxAttempts} 回目（${backendLabel()}）...`;
       const refs = baseSheet ? [original, baseSheet] : [original];
       const sheet = await generateImage({ prompt, images: refs });
 
