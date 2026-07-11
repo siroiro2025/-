@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>とまりぐるぐる（上半身版）ビューア</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; padding: 24px;
+    box-sizing: border-box;
+  }
+  #avatar {
+    width: min(70vmin, 480px); height: min(70vmin, 480px);
+    border-radius: 16px; object-fit: contain;
+    background: rgba(128,128,128,.08);
+  }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-size: .95rem; padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(128,128,128,.5);
+    background: transparent; cursor: pointer; color: inherit;
+  }
+  button.active { background: #e07a5f; color: #fff; border-color: #e07a5f; }
+  #status { opacity: .6; font-size: .85rem; }
+</style>
+</head>
+<body>
+<img id="avatar" alt="avatar">
+<div class="controls">
+  <button id="micBtn">🎤 マイクでリップシンク</button>
+  <button id="demoBtn">💬 おしゃべりデモ</button>
+  <span id="status">読み込み中...</span>
+</div>
+<script src="viewer.js"></script>
+</body>
+</html>

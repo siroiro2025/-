@@ -1,0 +1,21 @@
+{
+  "name": "tomari-auto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "一枚絵から上半身入りアバター素材（5x5方向×6表情）を自動生成する Tomari-Guruguru 拡張アプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.4"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
