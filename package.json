@@ -1,0 +1,19 @@
+{
+  "name": "miru",
+  "version": "0.1.0",
+  "description": "Local-first image review tool — index folders, rate, tag, and search your images from the browser",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "samples": "node scripts/make-samples.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2",
+    "sharp": "^0.34.2"
+  }
+}

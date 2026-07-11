@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>miru — image review</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>👁</text></svg>">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header id="toolbar">
+  <div class="brand">miru</div>
+  <input id="search" type="search" placeholder="検索（ファイル名・タグ） /" autocomplete="off">
+  <div id="rating-filter" class="stars" title="最低レートで絞り込み"></div>
+  <button id="toggle-rejected" class="chip" title="リジェクト済みを表示">🗑 rejected</button>
+  <select id="sort">
+    <option value="newest">新しい順</option>
+    <option value="oldest">古い順</option>
+    <option value="rating">レート順</option>
+    <option value="name">名前順</option>
+    <option value="random">シャッフル</option>
+  </select>
+  <button id="rescan" class="chip" title="フォルダを再スキャン">⟳ scan</button>
+  <span id="count"></span>
+</header>
+
+<div id="layout">
+  <aside id="sidebar">
+    <section>
+      <h3>フォルダ</h3>
+      <ul id="folder-list"></ul>
+      <form id="add-folder">
+        <input type="text" placeholder="/path/to/images" required>
+        <button type="submit">追加</button>
+      </form>
+    </section>
+    <section>
+      <h3>タグ</h3>
+      <ul id="tag-list"></ul>
+    </section>
+    <section class="help">
+      <h3>キー操作</h3>
+      <dl>
+        <dt>← → ↑ ↓</dt><dd>選択移動</dd>
+        <dt>1–5 / 0</dt><dd>レート / 解除</dd>
+        <dt>X</dt><dd>リジェクト</dd>
+        <dt>T</dt><dd>タグ追加</dd>
+        <dt>Enter</dt><dd>拡大表示</dd>
+        <dt>Esc</dt><dd>閉じる</dd>
+      </dl>
+    </section>
+  </aside>
+
+  <main id="grid" tabindex="0"></main>
+</div>
+
+<div id="lightbox" hidden>
+  <button class="lb-close" title="閉じる (Esc)">✕</button>
+  <button class="lb-nav lb-prev" title="前へ (←)">‹</button>
+  <img id="lb-image" alt="">
+  <button class="lb-nav lb-next" title="次へ (→)">›</button>
+  <div id="lb-panel">
+    <div id="lb-name"></div>
+    <div id="lb-meta"></div>
+    <div id="lb-stars" class="stars"></div>
+    <div id="lb-tags"></div>
+    <input id="lb-tag-input" type="text" placeholder="タグを追加して Enter (T)">
+    <button id="lb-autotag" title="AIで自動タグ付け">✨ AIタグ</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
