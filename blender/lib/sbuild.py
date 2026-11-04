@@ -48,7 +48,8 @@ def color_mat(color, rough=0.75, prefix="col"):
 _FONTS = {}
 JP_FONTS = ["/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
             "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
-            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"]
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "C:/Windows/Fonts/meiryob.ttc", "C:/Windows/Fonts/YuGothB.ttc", "C:/Windows/Fonts/msgothic.ttc"]
 
 
 def _font(path=None):

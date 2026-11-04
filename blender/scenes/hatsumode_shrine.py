@@ -506,7 +506,8 @@ def main():
     ap.add_argument("--night", action="store_true", help="夜（屋台の明かりが主役）")
     ap.add_argument("--cam", default="main", choices=["main", "stalls", "haiden"], help="カメラ位置")
     ap.add_argument("--stall-light", type=float, default=None, help="屋台の照明の強さ (W)")
-    args = ap.parse_args(sys.argv[1:])
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]  # blender -b -P ... -- の形にも対応
+    args = ap.parse_args(argv)
     if args.preview:
         args.samples, args.res = 16, [640, 360]
     if args.stall_light is None:
