@@ -1,0 +1,15 @@
+[
+  {"name": "Kimono_Woman_A", "gender": "female", "outfit": "kimono", "outfit_color": "kimono_red",
+   "obi_color": "gold", "hair": "bun", "scarf": "white", "pos": [-0.9, -2.2], "facing": 170},
+  {"name": "Kimono_Woman_B", "gender": "female", "outfit": "kimono", "outfit_color": "kimono_blue",
+   "obi_color": "cream", "hair": "bun", "pos": [-0.3, -2.0], "facing": 185},
+  {"name": "Man_Down_Navy", "gender": "male", "outfit": "down", "outfit_color": "navy",
+   "bottom_color": "denim", "hat": "gray", "pose": "walk", "pos": [1.4, -3.0], "facing": 180},
+  {"name": "Woman_LongCoat_Beige", "gender": "female", "outfit": "long_coat", "outfit_color": "beige",
+   "bottom": "skirt", "bottom_color": "black", "hair": "long", "hair_color": "darkbrown",
+   "scarf": "red", "mask": true, "bag": "shoulder", "bag_color": "camel", "pos": [2.2, -1.0], "facing": 190},
+  {"name": "Man_Coat_Returning", "gender": "male", "outfit": "short_coat", "outfit_color": "camel",
+   "bottom_color": "black", "pose": "walk", "pos": [-2.0, 0.6], "facing": 10},
+  {"name": "Woman_Down_Pink", "gender": "female", "outfit": "down", "outfit_color": "pink",
+   "bottom_color": "black", "hair": "bob", "bag": "backpack", "bag_color": "black", "pos": [0.8, 1.6], "facing": 175}
+]
