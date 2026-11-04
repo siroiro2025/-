@@ -24,7 +24,10 @@ blender-py blender/scenes/hatsumode_shrine.py --crowd blender/scenes/hatsumode_c
 | `hatsumode_shrine.png` | 完成イメージ |
 
 オプション:
-- `--preview` … 小さい画像ですばやく確認（約 30 秒）
+- `--preview` … 小さい画像ですばやく確認（約 1 分半）
+- `--cam main|stalls|haiden` … カメラ位置（鳥居ごし / 屋台の列 / 拝殿の近く）
+- `--night` … 夜（屋台の明かりが主役。`hatsumode_shrine_night*.png` に出る）
+- `--stall-light 30` … 屋台の照明の強さ
 - `--count 80` … 人物の総数
 - `--seed 5` … 人の並びや服をランダムに変える
 - `--no-render` / `--no-export` … 画像だけ・書き出しだけを省く
@@ -57,8 +60,31 @@ blender-py blender/scenes/hatsumode_shrine.py --crowd blender/scenes/hatsumode_c
 マネキンの見本は `blender-py blender/scenes/mannequin_lineup.py` で
 `output/mannequin_lineup.png` と `output/mannequins.glb` に出ます。
 
+## 屋台の種類
+
+`lib/yatai.py` の `THEMES` に 1 軒ずつ書いてあります。店名・テントの色・幕の色・
+屋根の上の看板・のぼり旗・商品の種類（`kind`）を変えられます。
+
+| kind | 商品 |
+|---|---|
+| `yakisoba` | 鉄板と焼きそば、パック |
+| `takoyaki` | たこ焼き器、舟皿 |
+| `ringo` / `banana` | りんご飴 / チョコバナナ（串を発泡スチロールに挿す） |
+| `castella` | ベビーカステラ・東京ケーキの焼き機と紙袋 |
+| `amazake` | 甘酒の寸胴と紙コップ |
+| `yakitori` | 炭火の焼き台と串 |
+| `wataame` | わたあめ機と吊るした袋 |
+| `jaga` | 蒸し器とじゃがいも |
+| `omen` | 奥の壁のお面と風船 |
+
+どの屋台にも、ガスボンベ・ポリタンク・クーラーボックス・ブルーシート・
+裸電球・蛍光灯・値札がつきます。文字は IPA ゴシック（`/usr/share/fonts`）で書いています。
+
 ## ファイル構成
 
-- `lib/sbuild.py` … マテリアル・形を作る共通部品
+- `lib/sbuild.py` … マテリアル・形を作る共通部品（日本語の文字も）
+- `lib/roofs.py` … 反りのある屋根と瓦（丸瓦の列・巴瓦・熨斗瓦の棟）
+- `lib/trees.py` … 冬の裸木・常緑広葉樹・杉・植え込み
+- `lib/yatai.py` … 屋台
 - `lib/mannequin.py` … マネキン生成（色の一覧 `PALETTE` もここ）
 - `scenes/hatsumode_shrine.py` … 神社シーン本体

@@ -45,6 +45,23 @@ def color_mat(color, rough=0.75, prefix="col"):
     return mat(f"{prefix}_{color.lstrip('#')}", color, rough)
 
 
+_FONTS = {}
+JP_FONTS = ["/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+            "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"]
+
+
+def _font(path=None):
+    import os
+    cands = [path] if path else JP_FONTS
+    for pth in cands:
+        if pth and os.path.exists(pth):
+            if pth not in _FONTS:
+                _FONTS[pth] = bpy.data.fonts.load(pth)
+            return _FONTS[pth]
+    return None  # Blender 内蔵フォント（日本語は出ない）
+
+
 # ---------------------------------------------------------------- collections
 def collection(name, parent=None):
     if name in bpy.data.collections:
@@ -190,6 +207,42 @@ class MeshBuilder:
                 f = self.bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
                 f.material_index = mi
                 f.smooth = True
+
+
+    # 文字（日本語可）をメッシュとして追加。文字の正面は -Y を向き、上が +Z。
+    def text(self, m, body, loc=(0, 0, 0), rot=(0, 0, 0), size=0.3, align="CENTER", extrude=0.0,
+             bold=0.0, vertical=False, font_path=None, resolution=3):
+        font = _font(font_path)
+        cu = bpy.data.curves.new("tmp_text", "FONT")
+        cu.body = "\n".join(body) if vertical else body
+        cu.font = font
+        cu.size = size
+        cu.align_x = align
+        cu.align_y = "CENTER"
+        cu.extrude = extrude
+        cu.resolution_u = resolution
+        cu.offset = bold
+        if vertical:
+            cu.space_line = 0.85
+        ob = bpy.data.objects.new("tmp_text", cu)
+        bpy.context.scene.collection.objects.link(ob)
+        dg = bpy.context.evaluated_depsgraph_get()
+        me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+        bpy.data.objects.remove(ob)
+        bpy.data.curves.remove(cu)
+        n_before = len(self.bm.faces)
+        nv_before = len(self.bm.verts)
+        self.bm.from_mesh(me)
+        bpy.data.meshes.remove(me)
+        self.bm.verts.ensure_lookup_table()
+        self.bm.faces.ensure_lookup_table()
+        T = M(loc, rot) @ Matrix.Rotation(math.pi / 2, 4, "X")
+        for v in self.bm.verts[nv_before:]:
+            v.co = T @ v.co
+        mi = self._mi(m)
+        for f in self.bm.faces[n_before:]:
+            f.material_index = mi
+            f.smooth = False
 
     def build(self, coll, loc=(0, 0, 0), rot=(0, 0, 0), sharp_angle=40):
         me = bpy.data.meshes.new(self.name)

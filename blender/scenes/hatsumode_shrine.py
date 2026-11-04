@@ -26,6 +26,9 @@ sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 import bpy  # noqa: E402
 from sbuild import MeshBuilder, mat, collection, solidify  # noqa: E402
 from mannequin import Person, build_person, random_person  # noqa: E402
+from roofs import hip_roof_fn, hip_roof_tiles, surface_tiles_y, slab_tiles, ridge  # noqa: E402
+from trees import bare_tree, broadleaf_tree, sugi_tree, shrubs  # noqa: E402
+from yatai import build_stall, THEMES  # noqa: E402
 
 # ------------------------------------------------------------------ 配置の基準値
 PATH_HALF = 3.0          # 参道の半幅
@@ -52,7 +55,11 @@ def M_():
         lattice=mat("lattice", "#8a5a36", 0.6),
         door=mat("doorway", "#0c0907", 0.9),
         gold=mat("gold", "#c9a14a", 0.35, metal=0.7),
-        roof=mat("roof_tile", "#5c6066", 0.55),
+        roof=mat("roof_base", "#3b3e43", 0.6),
+        kawara=mat("kawara", "#6c7077", 0.4, metal=0.1),
+        kawara_cap=mat("kawara_cap", "#585c62", 0.4, metal=0.1),
+        noshi_line=mat("noshi_line", "#d9d6cf", 0.7),
+        copper_tile=mat("copper_tile", "#6a9682", 0.5, metal=0.2),
         roof_ridge=mat("roof_ridge", "#3f4247", 0.5),
         soffit=mat("eave_soffit", "#3a2418", 0.8),
         plaster=mat("plaster", "#e7e0cf", 0.85),
@@ -68,8 +75,9 @@ def M_():
         bulb=mat("bulb", "#ffe2a8", 0.3, emit="#ffd08a", emit_strength=25.0),
         water=mat("water", "#2a3a3e", 0.05),
         bark=mat("bark", "#4d443c", 0.95),
-        leaf=mat("evergreen", "#33463a", 0.9),
-        leaf2=mat("evergreen2", "#3d5240", 0.9),
+        leaf=[mat("evergreen", "#2f4434", 0.85), mat("evergreen2", "#3a5240", 0.85),
+              mat("evergreen3", "#27392c", 0.85)],
+        sugi=[mat("sugi", "#2b3d2c", 0.85), mat("sugi2", "#34482f", 0.85)],
         shrub=mat("shrub", "#3b5537", 0.9),
     )
 
@@ -164,19 +172,6 @@ def build_lantern(c, m, x, y, scale=1.0, name="Toro"):
     b.build(c, loc=(x, y, 0), sharp_angle=30)
 
 
-# ------------------------------------------------------------------ 屋根（反りのある寄棟）
-def hip_roof_fn(cx, cy, A, B, z0, H, p=1.6, corner_up=0.9, edge_up=0.25):
-    def f(x, y):
-        dx, dy = A - abs(x - cx), B - abs(y - cy)
-        d = max(0.0, min(dx, dy))
-        t = min(1.0, d / B)
-        z = z0 + H * t ** p
-        corner = max(0.0, 1.0 - (max(dx, 0) + max(dy, 0)) / (0.55 * B))
-        z += corner_up * corner ** 2 + edge_up * (1 - t) ** 4
-        return z
-    return f
-
-
 # ------------------------------------------------------------------ 手水舎
 def build_chozuya(c, m, x, y):
     b = MeshBuilder("Chozuya")
@@ -202,76 +197,12 @@ def build_chozuya(c, m, x, y):
     rb = MeshBuilder("Chozuya_Roof")
     rb.heightfield(m["copper"], roof_f, -2.15, 2.15, -1.75, 1.75, 30, 24)
     rb._mi(m["soffit"])
+    hip_roof_tiles(rb, roof_f, 0, 0, 2.15, 1.75, m["copper_tile"], m["copper_tile"], pitch=0.22, r=0.05, step=0.35, lift=0.02)
     rb.box(m["copper"], (0.9, 0.3, 0.25), (0, 0, 2.75 + 1.35 + 0.05))
     rb.sphere(m["copper"], 0.16, (0, 0, 4.35), scale=(1, 1, 1.25), seg=12, rings=8)
     ro = rb.build(c, loc=(x, y, 0))
     solidify(ro, 0.16, -1, 1)
     b.build(c, loc=(x, y, 0))
-
-
-# ------------------------------------------------------------------ 屋台
-STALL_GOODS = [
-    ("#b3242a", "sphere", 0.06),   # りんご飴
-    ("#8a5a2b", "box", 0.07),      # たい焼き・ベビーカステラ
-    ("#e7c07a", "box", 0.06),      # 焼きそば・お好み焼き
-    ("#f1efe7", "sphere", 0.05),   # わたあめ
-    ("#6b3a1f", "cyl", 0.05),      # 焼き鳥・たこ焼き
-    ("#d6a640", "cyl", 0.06),
-]
-
-
-def build_stall(c, m, side, y0, w=3.2, depth=2.3, inner=STALL_INNER, rng=None, idx=0):
-    rng = rng or random.Random()
-    b = MeshBuilder(f"Stall_{'R' if side > 0 else 'L'}{idx}")
-    xi, xo = side * inner, side * (inner + depth)
-    yc = y0 + w / 2
-    # カウンター
-    cx = xi + side * 0.38
-    b.box_z(m["stall_wood"], 0.72, w - 0.25, 0, 0.85, cx, yc)
-    b.box_z(m["stall_top"], 0.82, w - 0.15, 0.85, 0.05, cx, yc)
-    # 商品
-    col, kind, sz = rng.choice(STALL_GOODS)
-    gm = mat(f"goods_{col.lstrip('#')}", col, 0.5)
-    tray = mat("tray", "#d8d2c4", 0.6)
-    n = int((w - 0.6) / 0.28)
-    for row in range(2):
-        for i in range(n):
-            gy = y0 + 0.35 + i * 0.28
-            gx = cx + side * (-0.2 + row * 0.25)
-            b.box_z(tray, 0.2, 0.2, 0.9, 0.02, gx, gy)
-            if kind == "sphere":
-                b.sphere(gm, sz, (gx, gy, 0.92 + sz), seg=10, rings=6)
-            elif kind == "box":
-                b.box_z(gm, sz * 2, sz * 2.4, 0.92, sz * 1.2, gx, gy)
-            else:
-                b.cyl(gm, sz, sz, sz * 1.5, (gx, gy, 0.92 + sz * 0.75), seg=10)
-    # 奥の作業台・鉄板
-    b.box_z(m["stall_wood"], 0.6, w - 0.4, 0, 0.9, xo - side * 0.45, yc)
-    b.box_z(m["metal"], 0.5, w * 0.5, 0.9, 0.05, xo - side * 0.45, yc)
-    # 柱
-    zf, zb = 2.3, 2.85
-    xf = xi - side * 0.35
-    for py in (y0 + 0.05, y0 + w - 0.05):
-        b.cyl(m["metal"], 0.035, 0.035, zf, (xi, py, zf / 2), seg=6)
-        b.cyl(m["metal"], 0.035, 0.035, zb, (xo, py, zb / 2), seg=6)
-    # テント屋根（紅白の縞）
-    ns = max(4, int(round(w / 0.4)))
-    for i in range(ns):
-        ya, yb = y0 - 0.1 + (w + 0.2) * i / ns, y0 - 0.1 + (w + 0.2) * (i + 1) / ns
-        tm = m["tent_red"] if i % 2 == 0 else m["tent_white"]
-        sag = 0.05
-        b.quad(tm, [(xo + side * 0.1, ya, zb + 0.05), (xo + side * 0.1, yb, zb + 0.05),
-                    (xf, yb, zf), (xf, ya, zf)])
-        b.quad(tm, [(xf, ya, zf), (xf, yb, zf), (xf, yb, zf - 0.55 - sag), (xf, ya, zf - 0.55)])
-    # 奥の幕
-    b.quad(m["canvas"], [(xo, y0, 0), (xo, y0 + w, 0), (xo, y0 + w, zb), (xo, y0, zb)])
-    # 裸電球
-    for i in range(4):
-        by = y0 + 0.4 + (w - 0.8) * i / 3
-        b.cyl(m["black"], 0.008, 0.008, 0.3, (xf + side * 0.2, by, zf - 0.45), seg=4)
-        b.sphere(m["bulb"], 0.055, (xf + side * 0.2, by, zf - 0.64), scale=(1, 1, 1.2), seg=10, rings=6)
-    b.build(c)
-    return (xf + side * 0.2, yc, zf - 0.7)
 
 
 # ------------------------------------------------------------------ 拝殿
@@ -347,12 +278,15 @@ def build_haiden(c, m):
     rb = MeshBuilder("Haiden_Roof")
     rb.heightfield(m["roof"], f, -A, A, cy - B, cy + B, 90, 54)
     rb._mi(m["soffit"])
-    # 大棟
+    hip_roof_tiles(rb, f, 0, cy, A, B, m["kawara"], m["kawara_cap"], pitch=0.36, r=0.09, step=0.6)
+    # 大棟（熨斗瓦を積む）と鬼瓦
     zr = z0 + H
-    rb.box(m["roof_ridge"], (2 * (A - B) + 0.4, 0.7, 0.75), (0, cy, zr + 0.25))
+    ztop = ridge(rb, (-(A - B) - 0.3, cy), ((A - B) + 0.3, cy), 0.9, 9, m["roof_ridge"], m["noshi_line"],
+                 layer_h=0.13, base_z=zr - 0.1)
     for s in (-1, 1):
-        rb.box(m["roof_ridge"], (0.7, 1.0, 1.4), (s * (A - B + 0.2), cy, zr + 0.6))
-        rb.box(m["gold"], (0.1, 1.02, 0.12), (s * (A - B + 0.2), cy, zr + 0.9))
+        rb.box(m["roof_ridge"], (0.5, 1.1, ztop - zr + 0.9), (s * (A - B + 0.55), cy, (zr + ztop) / 2 + 0.35))
+        rb.box(m["roof_ridge"], (0.3, 1.3, 0.25), (s * (A - B + 0.6), cy, ztop + 0.75), rot=(0, s * 0.5, 0))
+        rb.box(m["gold"], (0.52, 0.5, 0.12), (s * (A - B + 0.55), cy - 0.3, (zr + ztop) / 2 + 0.3))
     # 隅棟
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -361,9 +295,10 @@ def build_haiden(c, m):
                 t = k / 12
                 px = sx * ((A - B) + B * t * 0.985)
                 py = cy + sy * B * t * 0.985
-                pts.append((px, py, f(px, py) + 0.12))
+                pts.append((px, py, f(px, py) + 0.2))
             for p1, p2 in zip(pts, pts[1:]):
-                rb.cyl_between(m["roof_ridge"], p1, p2, 0.16, seg=8)
+                rb.cyl_between(m["roof_ridge"], p1, p2, 0.24, seg=10)
+                rb.cyl_between(m["noshi_line"], (p1[0], p1[1], p1[2] + 0.2), (p2[0], p2[1], p2[2] + 0.2), 0.12, seg=8)
     ro = rb.build(c)
     solidify(ro, 0.4, -1, 1)
     ro.modifiers["Solidify"].material_offset_rim = 1
@@ -382,6 +317,11 @@ def build_haiden(c, m):
         cxs = s * (w / 2 + 0.3 * math.cos(ang))
         czs = ze + hh / 2 - 0.3 * math.sin(ang)
         g.box(m["roof"], (L, D, 0.3), (cxs, yg - 0.7 + D / 2, czs + 0.12), rot=(0, s * ang, 0))
+        th = s * ang
+        axis = (-s * math.cos(th), 0, s * math.sin(th))   # 軒→頂点
+        normal = (math.sin(th), 0, math.cos(th))
+        slab_tiles(g, (cxs, yg - 0.7 + D / 2, czs + 0.12), axis, normal, L, (0, 1, 0), D,
+                   m["kawara"], m["kawara_cap"], pitch=0.34, r=0.08)
         g.box(m["gold"], (L, 0.16, 0.34), (cxs, yg - 0.72, czs - 0.08), rot=(0, s * ang, 0))
     g.poly(m["plaster"], [(-w + 0.3, yg - 0.3, ze + 0.05), (w - 0.3, yg - 0.3, ze + 0.05), (0, yg - 0.3, ze + hh - 0.25)])
     for k in range(5):
@@ -402,6 +342,7 @@ def build_haiden(c, m):
     kb = MeshBuilder("Haiden_Karahafu")
     kb.heightfield(m["roof"], kf, -kw, kw, ky0, ky1, 40, 12)
     kb._mi(m["soffit"])
+    surface_tiles_y(kb, kf, -kw, kw, ky0, ky1, m["kawara"], m["kawara_cap"], pitch=0.32, r=0.08, step=0.45)
     ko = kb.build(c)
     solidify(ko, 0.38, -1, 1)
     kg = MeshBuilder("Haiden_Karahafu_Trim")
@@ -434,59 +375,6 @@ def build_haiden(c, m):
         else:
             s_.cyl(m["straw"], 0.05, 0.08, 0.45, (x, F - 0.32, z - 0.2), seg=8)  # 〆の子
     s_.build(c)
-
-
-# ------------------------------------------------------------------ 木
-def build_bare_tree(c, m, x, y, height, rng, name):
-    b = MeshBuilder(name)
-
-    def branch(p, d, length, radius, depth):
-        segs = 3
-        cur = p
-        for sgi in range(segs):
-            d = (d + __import__("mathutils").Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25),
-                                                       rng.uniform(-0.05, 0.15)))).normalized()
-            nxt = cur + d * (length / segs)
-            r2 = radius * (1 - 0.22 * (sgi + 1) / segs)
-            b.cyl_between(m["bark"], cur, nxt, radius * (1 - 0.22 * sgi / segs), r2, seg=6 if depth < 2 else 4)
-            cur = nxt
-        if depth >= 5 or radius < 0.012:
-            return
-        nchild = 3 if depth < 3 else 2
-        for _ in range(nchild):
-            nd = (d + __import__("mathutils").Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(0.1, 0.8)))).normalized()
-            branch(cur, nd, length * rng.uniform(0.55, 0.75), radius * 0.6, depth + 1)
-
-    from mathutils import Vector
-    branch(Vector((0, 0, 0)), Vector((0, 0, 1)), height * 0.35, height * 0.028, 0)
-    b.build(c, loc=(x, y, 0), sharp_angle=80)
-
-
-def build_evergreen(c, m, x, y, height, rng, name, kind="sugi"):
-    b = MeshBuilder(name)
-    b.cyl(m["bark"], height * 0.025, height * 0.015, height * 0.5, (0, 0, height * 0.25), seg=8)
-    leaf = rng.choice([m["leaf"], m["leaf2"]])
-    if kind == "sugi":
-        for k in range(4):
-            t = k / 4
-            z0 = height * (0.3 + 0.17 * k)
-            r = height * 0.2 * (1 - t * 0.7)
-            b.cyl(leaf, r, r * 0.25, height * 0.3, (0, 0, z0 + height * 0.15), seg=10, smooth=False)
-    else:
-        for k in range(7):
-            b.ico(leaf, height * rng.uniform(0.14, 0.22),
-                  (rng.uniform(-1, 1) * height * 0.18, rng.uniform(-1, 1) * height * 0.18,
-                   height * rng.uniform(0.5, 0.85)), subdiv=2)
-    b.build(c, loc=(x, y, 0))
-
-
-def build_shrubs(c, m, pts, rng):
-    b = MeshBuilder("Shrubs")
-    for (x, y, r) in pts:
-        for _ in range(3):
-            b.ico(m["shrub"], r * rng.uniform(0.6, 1.0),
-                  (x + rng.uniform(-r, r), y + rng.uniform(-r, r) * 0.6, r * 0.6), scale=(1, 1, 0.75), subdiv=2)
-    b.build(c)
 
 
 # ------------------------------------------------------------------ 人物配置
@@ -550,11 +438,15 @@ def setup_world_camera(lights_c, stall_lights, args):
     world = bpy.data.worlds.new("Overcast")
     sc.world = world
     bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
-    bg.inputs["Color"].default_value = (0.62, 0.65, 0.7, 1)
-    bg.inputs["Strength"].default_value = 1.1
+    if args.night:
+        bg.inputs["Color"].default_value = (0.02, 0.03, 0.06, 1)
+        bg.inputs["Strength"].default_value = 0.6
+    else:
+        bg.inputs["Color"].default_value = (0.62, 0.65, 0.7, 1)
+        bg.inputs["Strength"].default_value = 1.1
 
     sun_d = bpy.data.lights.new("Sun", "SUN")
-    sun_d.energy = 1.2
+    sun_d.energy = 0.02 if args.night else 1.2
     sun_d.angle = math.radians(35)
     sun_d.color = (0.95, 0.96, 1.0)
     sun = bpy.data.objects.new("Sun", sun_d)
@@ -563,7 +455,7 @@ def setup_world_camera(lights_c, stall_lights, args):
 
     for i, (x, y, z) in enumerate(stall_lights):
         ld = bpy.data.lights.new(f"StallLight{i}", "POINT")
-        ld.energy = 90
+        ld.energy = args.stall_light
         ld.color = (1.0, 0.78, 0.5)
         ld.shadow_soft_size = 0.4
         lo = bpy.data.objects.new(f"StallLight{i}", ld)
@@ -571,10 +463,17 @@ def setup_world_camera(lights_c, stall_lights, args):
         lights_c.objects.link(lo)
 
     cd = bpy.data.cameras.new("Camera")
-    cd.lens = 24
     cam = bpy.data.objects.new("Camera", cd)
-    cam.location = (-0.4, -10.0, 1.6)
-    cam.rotation_euler = (math.radians(98.5), 0, 0)
+    presets = {
+        # 名前: (位置, 回転(度), レンズmm)
+        "main": ((-0.4, -10.0, 1.6), (98.5, 0, 0), 24),        # 鳥居ごしに拝殿
+        "stalls": ((1.0, 0.6, 1.6), (90, 0, -33), 24),       # 参道から右の屋台の列
+        "haiden": ((0.6, 9.0, 1.7), (99, 0, 0), 30),          # 拝殿に近づいて
+    }
+    loc, rot, lens = presets[args.cam]
+    cd.lens = lens
+    cam.location = loc
+    cam.rotation_euler = tuple(math.radians(a) for a in rot)
     lights_c.objects.link(cam)
     sc.camera = cam
 
@@ -604,9 +503,14 @@ def main():
     ap.add_argument("--seed", type=int, default=2027)
     ap.add_argument("--samples", type=int, default=96)
     ap.add_argument("--res", type=int, nargs=2, default=[1280, 720])
+    ap.add_argument("--night", action="store_true", help="夜（屋台の明かりが主役）")
+    ap.add_argument("--cam", default="main", choices=["main", "stalls", "haiden"], help="カメラ位置")
+    ap.add_argument("--stall-light", type=float, default=None, help="屋台の照明の強さ (W)")
     args = ap.parse_args(sys.argv[1:])
     if args.preview:
         args.samples, args.res = 16, [640, 360]
+    if args.stall_light is None:
+        args.stall_light = 70.0 if args.night else 18.0
     os.makedirs(args.out, exist_ok=True)
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -630,35 +534,41 @@ def main():
         build_lantern(shrine, m, s * 10.8, 19.0, 0.95, f"Toro_Side{'R' if s > 0 else 'L'}")
 
     stall_lights = []
+    themes = list(THEMES)
     k = 0
-    for y0 in (-4.0, -0.6, 2.8, 6.2, 9.6, 13.0):
-        stall_lights.append(build_stall(stalls, m, 1, y0, rng=rng, idx=k)); k += 1
-    for y0 in (2.8, 6.2, 9.6, 13.0):
-        stall_lights.append(build_stall(stalls, m, -1, y0, rng=rng, idx=k)); k += 1
-    stall_lights.append(build_stall(stalls, m, -1, -7.4, inner=5.4, rng=rng, idx=k))
+    for y0 in (-4.4, -0.8, 2.8, 6.4, 10.0, 13.6):
+        stall_lights += build_stall(stalls, 1, y0, themes[k % len(themes)], w=3.4, inner=STALL_INNER, rng=rng, idx=k); k += 1
+    for y0 in (2.8, 6.4, 10.0, 13.6):
+        stall_lights += build_stall(stalls, -1, y0, themes[k % len(themes)], w=3.4, inner=STALL_INNER, rng=rng, idx=k); k += 1
+    stall_lights += build_stall(stalls, -1, -7.6, themes[k % len(themes)], w=3.4, inner=5.4, rng=rng, idx=k)
 
     bare = [(-10.5, 4.5, 15), (-13.5, -3.5, 13), (-15.5, 13, 16), (-9.5, 19, 12),
             (11.5, 1.0, 14), (14, 11, 15), (10.5, 20, 11), (9.5, -9, 13)]
     for i, (x, y, h) in enumerate(bare):
-        build_bare_tree(trees, m, x, y, h, rng, f"BareTree{i}")
+        bare_tree(trees, m["bark"], x, y, h, rng, f"BareTree{i}")
     i = 0
-    for _ in range(30):
-        x = rng.uniform(-36, 36)
-        y = rng.uniform(42, 68)
-        build_evergreen(trees, m, x, y, rng.uniform(10, 17), rng, f"Evergreen{i}",
-                        rng.choice(["sugi", "sugi", "broad"])); i += 1
     for s in (-1, 1):
-        for _ in range(6):
-            x = s * rng.uniform(19, 32)
-            y = rng.uniform(10, 38)
-            build_evergreen(trees, m, x, y, rng.uniform(8, 12), rng, f"Evergreen{i}", "sugi"); i += 1
+        for _ in range(4):  # 奥の裸木
+            bare_tree(trees, m["bark"], s * rng.uniform(12, 24), rng.uniform(24, 40), rng.uniform(11, 15), rng,
+                      f"BareTreeBack{i}", max_depth=5); i += 1
+    # 拝殿の裏の森（杉と常緑広葉樹）
+    for _ in range(26):
+        x, y = rng.uniform(-36, 36), rng.uniform(42, 68)
+        if rng.random() < 0.55:
+            sugi_tree(trees, m["bark"], m["sugi"], x, y, rng.uniform(13, 20), rng, f"Sugi{i}")
+        else:
+            broadleaf_tree(trees, m["bark"], m["leaf"], x, y, rng.uniform(10, 15), rng, f"Broadleaf{i}", detail=2)
+        i += 1
     for s in (-1, 1):
-        for _ in range(5):  # 奥の裸木
-            build_bare_tree(trees, m, s * rng.uniform(12, 24), rng.uniform(24, 40), rng.uniform(11, 15), rng,
-                            f"BareTreeBack{i}"); i += 1
-    build_shrubs(trees, m, [(-9.5, -1.5, 0.9), (-10, 1.5, 1.0), (-8.8, 5.5, 0.8), (-12, 8, 1.1),
-                            (8.5, 18.5, 0.8), (-8.5, 18.5, 0.8), (13, 17, 1.0), (-13, 17, 1.0),
-                            (7.6, -6, 0.7), (7.8, 5, 0.8), (7.8, 12, 0.8), (-7.8, 11, 0.8)], rng)
+        for _ in range(4):
+            sugi_tree(trees, m["bark"], m["sugi"], s * rng.uniform(19, 32), rng.uniform(10, 38),
+                      rng.uniform(10, 15), rng, f"Sugi{i}"); i += 1
+    # 手前を囲む常緑樹（参考画像の右奥・左奥）
+    broadleaf_tree(trees, m["bark"], m["leaf"], 15.5, 5.0, 11, rng, "Broadleaf_R", detail=3)
+    broadleaf_tree(trees, m["bark"], m["leaf"], -14.5, 22.0, 10, rng, "Broadleaf_L", detail=3)
+    shrubs(trees, m["shrub"], [(-9.5, -1.5, 0.9), (-10, 1.5, 1.0), (-8.8, 5.5, 0.8), (-12, 8, 1.1),
+                               (8.5, 18.5, 0.8), (-8.5, 18.5, 0.8), (13, 17, 1.0), (-13, 17, 1.0),
+                               (8.2, -6, 0.7), (8.4, 5, 0.8), (8.4, 12, 0.8), (-8.4, 11, 0.8)], rng)
 
     featured = []
     if args.crowd:
@@ -669,7 +579,7 @@ def main():
 
     setup_world_camera(rig, stall_lights, args)
 
-    base = os.path.join(args.out, "hatsumode_shrine")
+    base = os.path.join(args.out, "hatsumode_shrine" + ("_night" if args.night else ""))
     if not args.no_export:
         def export(path, include_crowd):
             bpy.ops.object.select_all(action="DESELECT")
@@ -687,7 +597,8 @@ def main():
         bpy.ops.wm.save_as_mainfile(filepath=base + ".blend", compress=True)
 
     if not args.no_render:
-        bpy.context.scene.render.filepath = base + ("_preview.png" if args.preview else ".png")
+        suffix = ("" if args.cam == "main" else "_" + args.cam) + ("_preview" if args.preview else "")
+        bpy.context.scene.render.filepath = base + suffix + ".png"
         bpy.ops.render.render(write_still=True)
     print("[hatsumode] done")
 
